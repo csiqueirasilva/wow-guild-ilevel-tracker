@@ -76,7 +76,7 @@
 				
 				function toHexString(color) {
 					return "#" + ((1 << 24) + (color[0] << 16) + (color[1] << 8) + color[2]).toString(16).slice(1);
-				}	
+				}
 				
 				function interpolate(c1, c2, fraction) {
 					var ret = [];
@@ -105,7 +105,13 @@
 							c2 = badColor;
 						}
 						
-						var color = interpolate(c1, c2, fraction);
+						var color;
+
+						if(intRow === total - 1) {
+							color = badColor;
+						} else {
+							color = interpolate(c1, c2, fraction);
+						}
 						
 						$(cell).css('background-color', toHexString(color));
 					}
