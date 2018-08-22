@@ -108,35 +108,6 @@
 						var color = interpolate(c1, c2, fraction);
 						
 						$(cell).css('background-color', toHexString(color));
-						
-						/*// Number formating
-						if (col == 3) {
-							// Get text
-							txt = $(cell).text();
-							// Format text
-							txt = numeral(txt).format('0,0.00');
-							// Update cell value
-							$(cell).html(' $ ' + txt);
-						}
-
-						// Odd row colours
-						if (row % 2) {
-							$(cell).css('background-color', '#edf3ff');
-						}
-
-						// Remove controls for the last row
-						if (row == 9) {
-							if (col < 3) {
-								$(cell).html('');
-							} 
-
-							if (col == 2) {
-								$(cell).html('Total');
-							}
-
-							$(cell).css('background-color', '#f46e42');
-							$(cell).css('color', '#fff');
-						}*/
 					}
 				});
 				
