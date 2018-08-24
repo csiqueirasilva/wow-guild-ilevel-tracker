@@ -2,6 +2,8 @@
 	include('secret.php');
 	$locale = isset($_REQUEST['locale']) ? $_REQUEST['locale'] : 'en_US';
 	$members = isset($_REQUEST['members']) ? explode(',', $_REQUEST['members']) : array();
+	$guildname = isset($_REQUEST['guild']) ? $_REQUEST['guild'] : GUILDNAME;
+	$realmname = isset($_REQUEST['realm']) ? $_REQUEST['realm'] : REALMNAME;
 ?>
 <!DOCTYPE html>
 <html>
@@ -53,8 +55,8 @@
 		</div>
 		<script>
 			var APIKEY = '<?= APIKEY ?>';
-			var REALMNAME = '<?= REALMNAME ?>';
-			var GUILDNAME = '<?= GUILDNAME ?>';
+			var REALMNAME = '<?= $realmname ?>';
+			var GUILDNAME = '<?= $guildname ?>';
 			var LOCALE = '<?= $locale ?>';
 			var LEVELCAP = <?= LEVELCAP ?>;
 			
@@ -127,7 +129,7 @@
 				var realm = chr['realm'];
 				var ilvl = chr['items']['averageItemLevel'];
 				var amulet = parseInt(chr['items']['neck']['azeriteItem']['azeriteLevel']);
-				amulet += Math.round( ( chr['items']['neck']['azeriteItem']['azeriteExperience'] / (chr['items']['neck']['azeriteItem']['azeriteExperience'] + chr['items']['neck']['azeriteItem']['azeriteExperienceRemaining']) )  * 100) / 100;
+				amulet += Math.min(0.99, Math.round( ( chr['items']['neck']['azeriteItem']['azeriteExperience'] / chr['items']['neck']['azeriteItem']['azeriteExperienceRemaining'] )  * 100 ) / 100);
 				excelData.push([
 					name,
 					realm,
@@ -140,7 +142,7 @@
 			$.getJSON('https://us.api.battle.net/wow/guild/' + REALMNAME + '/' + GUILDNAME + '?fields=members&locale=' + LOCALE + '&apikey=' + APIKEY, (data) => {
 				data['members'].forEach((el) => {
 					if(el['character']['level'] === LEVELCAP) {
-						toFetch.push(el['character']['name']);
+						toFetch.push(el['character']['realm'] + '-' + el['character']['name']);
 					}
 				});
 			<?php endif; ?>
@@ -148,13 +150,10 @@
 				var loadInterval = setInterval((data) => {
 					if(!fetching && toFetch.length > 0) {
 						fetching = true;
-						var charname = toFetch.shift();
-						var realm = REALMNAME;
-						<?php if(count($members) > 0): ?>
-						var buf = charname.split('-');
-						realm = buf[0];
-						charname = buf[1];
-						<?php endif; ?>
+						var fullname = toFetch.shift();
+						var buf = fullname.split('-');
+						var realm = buf[0];
+						var charname = buf[1];
 						$.getJSON('https://us.api.battle.net/wow/character/' + realm + '/' + charname + '?fields=reputation%2Citems%2Cstatistics&locale=' + LOCALE +'&apikey=' + APIKEY, (chr) => {
 							$('#load').append(chr['realm'] + '-' + charname + ',');
 							pushExcelChar(chr);
