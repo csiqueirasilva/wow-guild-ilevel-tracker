@@ -57,13 +57,24 @@
 				bottom: 0em;
 			}
 			
+			.jlink {
+				color: #00ccaa;
+				line-height: 1em;
+			}
+			
+			.jlink:hover {
+				cursor: pointer;
+				text-decoration: underline;
+			}
+			
 		</style>		
 	</head>
 	<body>
 		<div id="load"></div>
 		
 		<div id="app">
-			<a style="display: none;" id="download" download="progress.json">Download full json</a>
+			<div>Toggle columns:</div>
+			<div id="toggle-columns"></div>
 			<table id="excel" width="100%"></table>
 		</div>
 		<script>
@@ -106,9 +117,10 @@
 				
 				for(var i = 0; i < excelHeaders.length; i++) {
 					headers[i] = {title: excelHeaders[i]};
+					$('#toggle-columns').append('<a class="jlink"  data-column="' + i + '">' + excelHeaders[i] + '</a>&nbsp;');
 				}
 				
-				$('#excel').DataTable({
+				var table = $('#excel').DataTable({
 					data: excelData,
 					columns: headers,
 					paging: false,
@@ -203,6 +215,12 @@
 						$('[data-toggle="tooltip"]').tooltip();
 					}					
 				});
+				
+				$('#toggle-columns a').on( 'click', function (e) {
+					e.preventDefault();
+					var column = table.column( $(this).attr('data-column') );
+					column.visible( ! column.visible() );
+				} );
 				
 				$('#app').show(() => {
 					$('#load').remove();
