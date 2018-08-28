@@ -12,11 +12,17 @@
 		  src="https://code.jquery.com/jquery-3.3.1.min.js"
 		  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
 		  crossorigin="anonymous"></script>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js"></script>
-		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css" type="text/css" />
+		  
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+		
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>  
 
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/jexcel/1.5.0/js/jquery.jexcel.js"></script>
-		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jexcel/1.5.0/css/jquery.jexcel.min.css" type="text/css" />
+		<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.18/cr-1.5.0/datatables.min.css"/>
+ 
+		<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.18/cr-1.5.0/datatables.min.js"></script>
+		
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+		
 		<style>
 			body, html {
 				height: 100%;
@@ -26,6 +32,8 @@
 		
 			#app {
 				display: none;
+				margin: 10px;
+				width: calc(100% - 20px);
 			}
 			
 			#load {
@@ -44,14 +52,19 @@
 				margin-top: 10px;
 				margin-bottom: 10px;
 			}
+			
+			table.dataTable thead .sorting:before, table.dataTable thead .sorting:after, table.dataTable thead .sorting_asc:before, table.dataTable thead .sorting_asc:after, table.dataTable thead .sorting_desc:before, table.dataTable thead .sorting_desc:after, table.dataTable thead .sorting_asc_disabled:before, table.dataTable thead .sorting_asc_disabled:after, table.dataTable thead .sorting_desc_disabled:before, table.dataTable thead .sorting_desc_disabled:after {
+				bottom: 0em;
+			}
+			
 		</style>		
 	</head>
 	<body>
 		<div id="load"></div>
 		
 		<div id="app">
-			<a id="download" download="progress.json">Download full json</a>
-			<div id="excel"></div>
+			<a style="display: none;" id="download" download="progress.json">Download full json</a>
+			<table id="excel" width="100%"></table>
 		</div>
 		<script>
 			var APIKEY = '<?= APIKEY ?>';
@@ -64,39 +77,49 @@
 			var fetching = false;
 			var dataList = [];
 			var excelData = [];
-			var excelHeaders = ['name', 'realm', 'ilevel', 'amulet'];
+			var excelHeaders = ['realm', 'name', 'ilevel', 'amulet', 'm0', 'audit'];
+			
+			function getLastReset() {
+				var d = new Date();
+				if(d.getUTCDay() < 2 || (d.getUTCDay() === 2 && d.getUTCHours() < 12)) {
+					d.setUTCDate(d.getUTCDate() - 7);
+				}
+				d.setUTCMilliseconds(0); d.setUTCSeconds(0); d.setUTCMinutes(0); d.setUTCHours(15); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 5) % 7);
+				return new Date(d.getTime());
+			}
+			
+			function toHexString(color) {
+				return "#" + ((1 << 24) + (color[0] << 16) + (color[1] << 8) + color[2]).toString(16).slice(1);
+			}
+			
+			function interpolate(c1, c2, fraction) {
+				var ret = [];
+				for(var i = 0; i < 3; i++) {
+					ret[i] = Math.max(0, parseInt((c2[i] - c1[i]) * fraction + c1[i]));
+				}
+				return ret;
+			}
 			
 			function loadPage() {
-				$('#excel').jexcel({
+				
+				var headers = [];
+				
+				for(var i = 0; i < excelHeaders.length; i++) {
+					headers[i] = {title: excelHeaders[i]};
+				}
+				
+				$('#excel').DataTable({
 					data: excelData,
-					colHeaders: excelHeaders,
-					colWidths: [100, 80]
-				});
-				
-				var url = URL.createObjectURL( new Blob( [JSON.stringify(dataList)], {type:'text/plain'} ) );
-				$("#download").attr("href", url);
-				
-				function toHexString(color) {
-					return "#" + ((1 << 24) + (color[0] << 16) + (color[1] << 8) + color[2]).toString(16).slice(1);
-				}
-				
-				function interpolate(c1, c2, fraction) {
-					var ret = [];
-					for(var i = 0; i < 3; i++) {
-						ret[i] = Math.max(0, parseInt((c2[i] - c1[i]) * fraction + c1[i]));
-					}
-					return ret;
-				}
-				
-				$('#excel').jexcel('updateSettings', {
-					table: function (instance, cell, col, row, val, id) {
-						
+					columns: headers,
+					paging: false,
+					order: [[2, 'desc'], [3, 'desc']],
+					createdRow: (row, data, dataIndex) => {
 						var total = excelData.length;
 						var half = parseInt(total / 2);
 						var okColor = [166, 255, 98];
 						var halfColor = [255, 239, 67];
 						var badColor = [255, 68, 58];
-						var intRow = parseInt(row); 
+						var intRow = parseInt(dataIndex); 
 						var fraction = (intRow % half) / half;
 						
 						var c1 = okColor;
@@ -115,8 +138,70 @@
 							color = interpolate(c1, c2, fraction);
 						}
 						
-						$(cell).css('background-color', toHexString(color));
-					}
+						$(row).css('background-color', toHexString(color));
+					},
+					columnDefs: [{
+						targets: [4, 5],
+						createdCell: (cell, cellData, rowData, rowIndex, colIndex) => {	
+							var lastReset = getLastReset();
+							if(colIndex === 4) /* m0 data */ {
+								var dungeonStats = dataList[cellData].statistics.subCategories[5].subCategories[7].statistics;
+								var check = [
+									12785, // waymanor crest
+									12782, // tol dagor
+									12745, // underrot
+									12779, // motherlode
+									12776, // temple of sethraliss
+									12773, // siege of boralus
+									12768, // shrine of the storm
+									12763, // kings rest
+									12752, // freehold
+									12749  // atal dazor
+								];
+								var missingNames = [];
+								var doneNames = [];
+								var extractRegex = /(?:\(Mythic )([^)]+)/;
+								for(var i = 0; i < dungeonStats.length; i++) {
+									var dun = dungeonStats[i];
+									if(check.indexOf(dun.id) !== -1) {
+										var name = dun.name;
+										var match = dun.name.match(extractRegex);
+										if(match !== null && match.length > 1) {
+											name = match[1];
+										}
+										if(dun.lastUpdated > lastReset) {
+											doneNames.push(name);
+										} else {
+											missingNames.push(name);
+										}
+									}
+								}
+								
+								var htmlNames = '<div style=\'margin-bottom: 2px; color:#00ff00;font-weight:bold;\'>DONE</div>';
+								
+								if(doneNames.length === 0) {
+									htmlNames = '';
+								} else {
+									for(var i = 0; i < doneNames.length; i++) {
+										htmlNames += "<div style='color:#fff';>" + doneNames[i] + "</div>";
+									}
+								}
+								
+								if(missingNames.length !== 0) {
+									htmlNames += '<div style=\'margin-bottom: 2px; color:#ff0000;font-weight:bold;\'>NOT DONE</div>';
+									
+									for(var i = 0; i < missingNames.length; i++) {
+										htmlNames += "<div style='color:#fff';>" + missingNames[i] + "</div>";
+									}
+								}
+								
+								$(cell).html('<span data-html="true" data-toggle="tooltip" title="' + htmlNames + '">' + doneNames.length + '/' + check.length + '</span>');
+							}
+						}
+					}],
+					initComplete: () => {
+						$('[data-toggle="tooltip"]').tooltip();
+					}					
 				});
 				
 				$('#app').show(() => {
@@ -131,10 +216,12 @@
 				var amulet = parseInt(chr['items']['neck']['azeriteItem']['azeriteLevel']);
 				amulet += Math.min(0.99, Math.round( ( chr['items']['neck']['azeriteItem']['azeriteExperience'] / chr['items']['neck']['azeriteItem']['azeriteExperienceRemaining'] )  * 100 ) / 100);
 				excelData.push([
-					name,
 					realm,
+					name,
 					ilvl,
-					amulet
+					amulet,
+					dataList.length /* inserts at the end */,
+					dataList.length /* inserts at the end */
 				]);
 			}
 			
@@ -154,7 +241,7 @@
 						var buf = fullname.split('-');
 						var realm = buf[0];
 						var charname = buf[1];
-						$.getJSON('https://us.api.battle.net/wow/character/' + realm + '/' + charname + '?fields=reputation%2Citems%2Cstatistics&locale=' + LOCALE +'&apikey=' + APIKEY, (chr) => {
+						$.getJSON('https://us.api.battle.net/wow/character/' + realm + '/' + charname + '?fields=audit%2Creputation%2Citems%2Cstatistics&locale=' + LOCALE +'&apikey=' + APIKEY, (chr) => {
 							$('#load').append(chr['realm'] + '-' + charname + ',');
 							pushExcelChar(chr);
 							dataList.push(chr);
