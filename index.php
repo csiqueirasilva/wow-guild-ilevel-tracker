@@ -44,8 +44,8 @@
 				z-index: 999999;
 				background-color: rgb(0,0,0);
 				color: #fff;
-				height: calc(100% - 20px);
-				width: calc(100% - 20px);
+				height: 100%;
+				width: 100%;
 			}
 			
 			#download {
@@ -95,10 +95,16 @@
 				display: inline-block;
 			}
 			
+			.row {
+				margin-right: 0px !important;
+			}
+			
 		</style>		
 	</head>
 	<body>
-		<div id="load"></div>
+		<div id="load">
+			<h1>LOADING</h1>
+		</div>
 		
 		<div id="app">
 			<div class="control-op">
@@ -347,7 +353,7 @@
 						var realm = buf[0];
 						var charname = buf[1];
 						$.getJSON('https://us.api.battle.net/wow/character/' + realm + '/' + charname + '?fields=guild%2Caudit%2Creputation%2Citems%2Cstatistics&locale=' + LOCALE +'&apikey=' + APIKEY, (chr) => {
-							$('#load').append(chr['realm'] + '-' + charname + ',');
+							$('#load').append('<div>' + chr['realm'] + '-' + charname + '</div>' );
 							pushExcelChar(chr);
 							dataList.push(chr);
 							fetching = false;
