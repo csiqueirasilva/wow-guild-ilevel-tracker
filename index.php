@@ -1,7 +1,7 @@
 <?php
 	include('secret.php');
 	$locale = isset($_REQUEST['locale']) ? $_REQUEST['locale'] : 'en_US';
-	$members = isset($_REQUEST['members']) ? explode(',', $_REQUEST['members']) : array();
+	$members = isset($_REQUEST['guild']) ? array() : (isset($_REQUEST['members']) ? explode(',', $_REQUEST['members']) : $MEMBERS_SRC);
 	$guildname = isset($_REQUEST['guild']) ? $_REQUEST['guild'] : GUILDNAME;
 	$realmname = isset($_REQUEST['realm']) ? $_REQUEST['realm'] : REALMNAME;
 ?>
@@ -65,6 +65,30 @@
 			.jlink:hover {
 				cursor: pointer;
 				text-decoration: underline;
+			}
+			
+			#excel tr:hover td {
+				background-color: #000;
+				color: #fff;
+			}
+			
+			#excel {
+				border-collapse: collapse !important;
+			}
+			
+			#excel tbody {
+				border-top: 1px black solid;
+				border-left: 1px black solid;
+				text-align: center;
+			}
+			
+			#excel tr td {
+				border-right: 1px black solid;
+				border-bottom: 1px black solid;
+			}
+			
+			.moreinfo {
+				cursor: default;
 			}
 			
 		</style>		
@@ -153,6 +177,10 @@
 						$(row).css('background-color', toHexString(color));
 					},
 					columnDefs: [{
+						targets: [0, 5],
+						visible: false
+					},
+					{
 						targets: [4, 5],
 						createdCell: (cell, cellData, rowData, rowIndex, colIndex) => {	
 							var lastReset = getLastReset();
@@ -207,7 +235,13 @@
 									}
 								}
 								
-								$(cell).html('<span data-html="true" data-toggle="tooltip" title="' + htmlNames + '">' + doneNames.length + '/' + check.length + '</span>');
+								rowData[colIndex] = doneNames.length;
+								
+								$(cell).html(doneNames.length + '/' + check.length);
+								$(cell).addClass('moreinfo');
+								$(cell).attr('data-html', 'true');
+								$(cell).attr('data-toggle', 'tooltip');
+								$(cell).attr('title', htmlNames);
 							}
 						}
 					}],
