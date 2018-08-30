@@ -91,14 +91,26 @@
 				cursor: default;
 			}
 			
+			.control-op {
+				display: inline-block;
+			}
+			
 		</style>		
 	</head>
 	<body>
 		<div id="load"></div>
 		
 		<div id="app">
-			<div>Toggle columns:</div>
-			<div id="toggle-columns"></div>
+			<div class="control-op">
+				<div>Toggle columns:</div>
+				<div id="toggle-columns"></div>
+			</div>
+			<div class="control-op">
+				<div>Per guild:</div>
+				<select id="guild-op" class="form-control">
+					<option value="-1">ALL RESULTS</option>
+				</select>
+			</div>
 			<table id="excel" width="100%"></table>
 		</div>
 		<script>
@@ -112,7 +124,24 @@
 			var fetching = false;
 			var dataList = [];
 			var excelData = [];
-			var excelHeaders = ['realm', 'name', 'ilevel', 'amulet', 'm0', 'audit'];
+			var guildList = [];
+			
+			var COL_REALM = 0;
+			var COL_GUILD = 1;
+			var COL_NAME = 2;
+			var COL_ILVL = 3;
+			var COL_AMULET = 4;
+			var COL_M0 = 5;			
+			var COL_AUDIT = 6;
+			
+			var excelHeaders = ['realm', 'guild', 'name', 'ilevel', 'amulet', 'm0', 'audit'];
+			
+			function buildGuildFilter() {
+				guildList = guildList.sort();
+				for(var i = 0; i < guildList.length; i++) {
+					$('#guild-op').append('<option value="' + guildList[i] + '">' + guildList[i] + '</option>');
+				}
+			}
 			
 			function getLastReset() {
 				var d = new Date();
@@ -148,7 +177,7 @@
 					data: excelData,
 					columns: headers,
 					paging: false,
-					order: [[2, 'desc'], [3, 'desc']],
+					order: [[COL_ILVL, 'desc'], [COL_AMULET, 'desc']],
 					createdRow: (row, data, dataIndex) => {
 						var total = excelData.length;
 						var half = parseInt(total / 2);
@@ -177,14 +206,14 @@
 						$(row).css('background-color', toHexString(color));
 					},
 					columnDefs: [{
-						targets: [0, 5],
+						targets: [COL_REALM, COL_GUILD, COL_AUDIT],
 						visible: false
 					},
 					{
-						targets: [4, 5],
+						targets: [COL_M0, COL_AUDIT],
 						createdCell: (cell, cellData, rowData, rowIndex, colIndex) => {	
 							var lastReset = getLastReset();
-							if(colIndex === 4) /* m0 data */ {
+							if(colIndex === COL_M0) /* m0 data */ {
 								var dungeonStats = dataList[cellData].statistics.subCategories[5].subCategories[7].statistics;
 								var check = [
 									12785, // waymanor crest
@@ -256,6 +285,22 @@
 					column.visible( ! column.visible() );
 				} );
 				
+				$.fn.dataTable.ext.search.push(
+					function( settings, data, dataIndex ) {
+						var selectedGuildName = $('#guild-op').val();
+						var thisGuildName = data[COL_REALM] + ' - ' + data[COL_GUILD];
+						var ret = false;
+						
+						if (selectedGuildName == -1 || (thisGuildName === selectedGuildName)) {
+							ret = true;
+						}
+						
+						return ret;
+					}
+				);
+				
+				$('#guild-op').change(() => table.draw());
+				
 				$('#app').show(() => {
 					$('#load').remove();
 				});
@@ -264,17 +309,25 @@
 			function pushExcelChar(chr) {
 				var name = chr['name'];
 				var realm = chr['realm'];
+				var guild = chr['guild'] ? chr['guild']['name'] : '';
 				var ilvl = chr['items']['averageItemLevel'];
 				var amulet = parseInt(chr['items']['neck']['azeriteItem']['azeriteLevel']);
 				amulet += Math.min(0.99, Math.round( ( chr['items']['neck']['azeriteItem']['azeriteExperience'] / chr['items']['neck']['azeriteItem']['azeriteExperienceRemaining'] )  * 100 ) / 100);
 				excelData.push([
 					realm,
+					guild,
 					name,
 					ilvl,
 					amulet,
 					dataList.length /* inserts at the end */,
 					dataList.length /* inserts at the end */
 				]);
+				
+				var guildNameList = realm + ' - ' + guild;
+				
+				if(guild && guildList.indexOf(guildNameList) === -1) {
+					guildList.push(guildNameList);
+				}
 			}
 			
 			<?php if(count($members) === 0): ?>
@@ -293,7 +346,7 @@
 						var buf = fullname.split('-');
 						var realm = buf[0];
 						var charname = buf[1];
-						$.getJSON('https://us.api.battle.net/wow/character/' + realm + '/' + charname + '?fields=audit%2Creputation%2Citems%2Cstatistics&locale=' + LOCALE +'&apikey=' + APIKEY, (chr) => {
+						$.getJSON('https://us.api.battle.net/wow/character/' + realm + '/' + charname + '?fields=guild%2Caudit%2Creputation%2Citems%2Cstatistics&locale=' + LOCALE +'&apikey=' + APIKEY, (chr) => {
 							$('#load').append(chr['realm'] + '-' + charname + ',');
 							pushExcelChar(chr);
 							dataList.push(chr);
@@ -303,12 +356,13 @@
 						clearInterval(loadInterval);
 						console.log(dataList);
 						excelData = excelData.sort(function Comparator(a, b) {
-						   if (a[2] < b[2]) return 1;
-						   if (a[2] > b[2]) return -1;
-						   if (a[3] < b[3]) return 1;
-						   if (a[3] > b[3]) return -1;
+						   if (a[COL_ILVL] < b[COL_ILVL]) return 1;
+						   if (a[COL_ILVL] > b[COL_ILVL]) return -1;
+						   if (a[COL_AMULET] < b[COL_AMULET]) return 1;
+						   if (a[COL_AMULET] > b[COL_AMULET]) return -1;
 						   return 0;
 						});
+						buildGuildFilter();
 						loadPage();
 					}
 				}, 100);
