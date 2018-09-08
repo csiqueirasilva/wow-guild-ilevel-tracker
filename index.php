@@ -37,6 +37,7 @@
 			}
 			
 			#load {
+				overflow: hidden;
 				padding: 10px;
 				position: absolute;
 				top: 0px;
@@ -317,8 +318,13 @@
 				var realm = chr['realm'];
 				var guild = chr['guild'] ? chr['guild']['name'] : '';
 				var ilvl = chr['items']['averageItemLevel'];
-				var amulet = parseInt(chr['items']['neck']['azeriteItem']['azeriteLevel']);
-				amulet += Math.min(0.99, Math.round( ( chr['items']['neck']['azeriteItem']['azeriteExperience'] / chr['items']['neck']['azeriteItem']['azeriteExperienceRemaining'] )  * 100 ) / 100);
+				var amulet = '-';
+				
+				if(chr['items']['neck']) {
+					amulet = parseInt(chr['items']['neck']['azeriteItem']['azeriteLevel']);
+					amulet += Math.min(0.99, Math.round( ( chr['items']['neck']['azeriteItem']['azeriteExperience'] / chr['items']['neck']['azeriteItem']['azeriteExperienceRemaining'] )  * 100 ) / 100);
+				}
+				
 				excelData.push([
 					realm,
 					guild,
@@ -346,30 +352,35 @@
 			<?php endif; ?>
 			
 				var loadInterval = setInterval((data) => {
-					if(!fetching && toFetch.length > 0) {
-						fetching = true;
-						var fullname = toFetch.shift();
-						var buf = fullname.split('-');
-						var realm = buf[0];
-						var charname = buf[1];
-						$.getJSON('https://us.api.battle.net/wow/character/' + realm + '/' + charname + '?fields=guild%2Caudit%2Creputation%2Citems%2Cstatistics&locale=' + LOCALE +'&apikey=' + APIKEY, (chr) => {
-							$('#load').append('<div>' + chr['realm'] + '-' + charname + '</div>' );
-							pushExcelChar(chr);
-							dataList.push(chr);
-							fetching = false;
-						});
-					} else if (toFetch.length === 0) {
-						clearInterval(loadInterval);
-						console.log(dataList);
-						excelData = excelData.sort(function Comparator(a, b) {
-						   if (a[COL_ILVL] < b[COL_ILVL]) return 1;
-						   if (a[COL_ILVL] > b[COL_ILVL]) return -1;
-						   if (a[COL_AMULET] < b[COL_AMULET]) return 1;
-						   if (a[COL_AMULET] > b[COL_AMULET]) return -1;
-						   return 0;
-						});
-						buildGuildFilter();
-						loadPage();
+					if(!fetching) {
+						if(toFetch.length > 0) {
+							fetching = true;
+							var fullname = toFetch.shift();
+							var buf = fullname.split('-');
+							var realm = buf[0];
+							var charname = buf[1];
+							$.getJSON('https://us.api.battle.net/wow/character/' + realm + '/' + charname + '?fields=achievements%2Cguild%2Caudit%2Creputation%2Citems%2Cstatistics&locale=' + LOCALE +'&apikey=' + APIKEY, (chr) => {
+								$('#load').append('<div>' + chr['realm'] + '-' + charname + '</div>' );
+								// scroll #load
+								var scr = $('#load')[0].scrollHeight;
+								$('#load').scrollTop(scr);
+								pushExcelChar(chr);
+								dataList.push(chr);
+								fetching = false;
+							});
+						} else if (toFetch.length === 0) {
+							clearInterval(loadInterval);
+							console.log(dataList);
+							excelData = excelData.sort(function Comparator(a, b) {
+							   if (a[COL_ILVL] < b[COL_ILVL]) return 1;
+							   if (a[COL_ILVL] > b[COL_ILVL]) return -1;
+							   if (a[COL_AMULET] < b[COL_AMULET]) return 1;
+							   if (a[COL_AMULET] > b[COL_AMULET]) return -1;
+							   return 0;
+							});
+							buildGuildFilter();
+							loadPage();
+						}
 					}
 				}, 100);
 				
